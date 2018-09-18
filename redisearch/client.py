@@ -109,6 +109,10 @@ class Client(object):
     DEL_CMD = 'FT.DEL'
     AGGREGATE_CMD = 'FT.AGGREGATE'
     CURSOR_CMD = 'FT.CURSOR'
+    SPELLCHECK_CMD = 'FT.SPELLCHECK'
+    DICT_ADD_CMD = 'FT.DICTADD'
+    DICT_DEL_CMD = 'FT.DICTDEL'
+    DICT_DUMP_CMD = 'FT.DICTDUMP'
 
 
     NOOFFSETS = 'NOOFFSETS'
@@ -368,3 +372,52 @@ class Client(object):
 
         res = AggregateResult(rows, cursor, schema)
         return res
+
+    def spellcheck(self, query, distance=None, include=None, exclude=None):
+        """
+        Issue a spellcheck query
+
+        ### Parameters
+
+        **query**:
+        """
+        cmd = [self.SPELLCHECK_CMD, self.index_name, query]
+        if distance:
+            cmd.extend(['DISTANCE', distance])
+
+        if include:
+            cmd.extend(['TERMS', 'INCLUDE', include])
+
+        if exclude:
+            cmd.extend(['TERMS', 'EXCLUDE', exclude])
+
+        raw = self.redis.execute_command(*cmd)
+
+        corrections = {}
+        for _correction in raw:
+            if len(_correction) != 3:
+                continue
+            if not _correction[2]:
+                continue
+            if not _correction[2][0]:
+                continue
+            corrections[_correction[1]] = _correction[2][0][1]
+
+        return corrections
+
+    def dict_add(self, name, *terms):
+        cmd = [self.DICT_ADD_CMD, name]
+        cmd.extend(terms)
+        raw = self.redis.execute_command(*cmd)
+        return raw
+
+    def dict_del(self, name, *terms):
+        cmd = [self.DICT_DEL_CMD, name]
+        cmd.extend(terms)
+        raw = self.redis.execute_command(*cmd)
+        return raw
+
+    def dict_dump(self, name):
+        cmd = [self.DICT_DUMP_CMD, name]
+        raw = self.redis.execute_command(*cmd)
+        return raw
