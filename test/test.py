@@ -135,8 +135,8 @@ class RedisSearchTestCase(ModuleTestCase('../module.so')):
                 ids = [x.id for x in docs.docs]
                 self.assertEqual(set(ids), set(subset))
 
-                for doc in client.search(Query('henry king').return_fields('play', 'nonexist')).docs:
-                    self.assertFalse(doc.nonexist)
+                for doc in client.search(Query('henry king').return_fields('play')).docs:
+                    # self.assertFalse(doc.nonexist)
                     self.assertTrue(doc.play.startswith('Henry'))
 
                 # test slop and in order
@@ -495,6 +495,42 @@ class RedisSearchTestCase(ModuleTestCase('../module.so')):
                 q = Query("@tags:{hello\\;world}")
                 res = client.search(q)
                 self.assertEqual(1, res.total)
+
+    def testSpellCheck(self):
+        client = self.getCleanClient('idx')
+        client.create_index((TextField('f1'), TextField('f2')))
+
+        client.add_document('doc1', f1='some valid content', f2='this is sample text')
+        client.add_document('doc2', f1='very important', f2='lorem ipsum')
+
+        for i in self.retry_with_reload():
+            res = client.spellcheck('impornant')
+            self.assertEqual('important', res['impornant'][0]['suggestion'])
+
+            res = client.spellcheck('contnt')
+            self.assertEqual('content', res['contnt'][0]['suggestion'])
+
+    def testDictOps(self):
+        client = self.getCleanClient('idx')
+        client.create_index((TextField('f1'), TextField('f2')))
+        # client.redis.del("")
+
+        for i in self.retry_with_reload():
+            # Add three items
+            res = client.dict_add('custom_dict', 'item1', 'item2', 'item3')
+            self.assertEqual(3L, res)
+
+            # Remove one item
+            res = client.dict_del('custom_dict', 'item2')
+            self.assertEqual(1L, res)
+
+            # Dump dict and inspect content
+            res = client.dict_dump('custom_dict')
+            self.assertEqual(['item1', 'item3'], res)
+
+            # Remove rest of the items before reload
+            client.dict_del('custom_dict', *res)
+
 
 if __name__ == '__main__':
 
