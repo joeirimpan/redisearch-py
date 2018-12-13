@@ -394,6 +394,9 @@ class Client(object):
         raw = self.redis.execute_command(*cmd)
 
         corrections = {}
+        if raw == 0:
+            return corrections
+
         for _correction in raw:
             if len(_correction) != 3:
                 continue
