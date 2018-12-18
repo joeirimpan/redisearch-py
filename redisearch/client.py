@@ -398,6 +398,9 @@ class Client(object):
             return corrections
 
         for _correction in raw:
+            if isinstance(_correction, long) and _correction == 0:
+                continue
+
             if len(_correction) != 3:
                 continue
             if not _correction[2]:
